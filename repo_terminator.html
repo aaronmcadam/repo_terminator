@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <style>
+      #results li { margin-bottom: 5px; }
+    </style>
+  </head>
+
+  <body>
+    <p>Create a new <a href="https://github.com/settings/applications#personal-access-tokens" target="_blank">github access token</a> with 'delete_repo' privilege.</p>
+    <label>Username<input type="text" id="username" /></label><br />
+    <label>Token<input type="text" id="token" /></label><br />
+
+    <button id="get_repos">Get Repos</button>
+    <button id="select_all">Select All</button>
+
+    <div id="results"></div>
+    <div id="actions"></div>
+
+    <script>
+      var username, token;
+      $("#get_repos").on("click", function () { get_repos(); });
+
+      $("#select_all").on("click", function () {
+        $("input[type='checkbox']").click();
+      });
+
+      var get_repos = function () {
+        username = $("#username").val();
+        token = $("#token").val();
+
+        $.ajax({
+          dataType: "json",
+          url: "https://api.github.com/users/" + username + "/repos",
+          headers: { "Authorization": "token " + token },
+          success: function (data) {
+            $ul = $("<ul/>", { id: "repos" });
+            $(data).each( function (index, item) {
+              text = "<label for='" + item.name + "'>" + item.name + "<br />" + item.description + "</label>"
+              $li = $("<li/>", { html: text }).appendTo($ul);
+              $li.prepend($("<input/>", { type: "checkbox", id: item.name }));
+            });
+            $remove_button = $("<button/>", { id: "remove", text: "REMOVE" });
+            $remove_button.on("click", function () {
+              var to_delete = [];
+              $("#repos input:checked").each( function (index, element) {
+                to_delete.push($(element).attr("id"));
+              });
+              remove_repos(to_delete);
+            });
+            $("#results").empty().append($ul)
+            $("#actions").empty().append($remove_button);
+          }
+        });
+       };
+
+      var remove_repos = function (names) {
+        $.when(
+          $(names).each( function (index, name) {
+            return remove_repo(name);
+          })
+        ).done(function () {
+          $("#actions").after($("<div />", { id: "done", text: "DONE" }));
+          $("#done").fadeOut(3000, function() { $(this).remove() });
+        });
+      };
+
+      var remove_repo = function (name) {
+        return $.ajax({
+          dataType: "json",
+          type: "DELETE",
+          url: "https://api.github.com/repos/" + username + "/" + name,
+          headers: { "Authorization": "token " + token },
+          success: function (data) {
+            console.log("deleted: " + name);
+          }
+        });
+      };
+    </script>
+  </body>
+</html>
